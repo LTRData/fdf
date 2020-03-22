@@ -1,0 +1,42 @@
+#define UNICODE
+#define _UNICODE
+#include <windows.h>
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    0,0,3,0
+PRODUCTVERSION 0,0,3,0
+FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+#ifndef DEBUG
+  FILEFLAGS    0
+#else
+  FILEFLAGS    VS_FF_DEBUG | VS_FF_PRERELEASE
+#endif
+FILEOS         VOS__WINDOWS32
+FILETYPE       VFT_APP
+FILESUBTYPE    0
+BEGIN
+	BLOCK "StringFileInfo"
+	BEGIN
+		BLOCK "040904E4" // LANG_ENGLISH/SUBLANG_ENGLISH_US, CharSet=Unicode
+		BEGIN
+			VALUE "CompanyName",	"Olof Lagerkvist\0"
+			VALUE "FileDescription","Find Duplicate Files, fdf\0"
+			VALUE "FileVersion",	"0.0.3\0"
+			VALUE "InternalName",	"fdf\0"
+			VALUE "LegalCopyright",	"Copyright \251 2004 - 2014 Olof Lagerkvist.\0"
+			VALUE "OriginalFilename","fdf.exe\0"
+			VALUE "ProductName",	"Duplicate File Finder Utility\0"
+			VALUE "ProductVersion",	"0.0.3\0"
+		END
+	END
+	BLOCK "VarFileInfo"
+	BEGIN
+	VALUE "Translation", 0x409, 1252
+
+	END
+END

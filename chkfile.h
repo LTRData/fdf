@@ -1,0 +1,22 @@
+#ifndef EXTERN_C
+#ifdef _cplusplus
+#define EXTERN_C extern "C"
+#else
+#define EXTERN_C
+#endif
+#endif
+
+enum FILE_COMPARE_STATUS
+{
+  FILE_COMPARE_EQUAL,
+  FILE_COMPARE_FILE1_FAILED,
+  FILE_COMPARE_FILE2_FAILED,
+  FILE_COMPARE_FILE1_LONGER,
+  FILE_COMPARE_FILE2_LONGER,
+  FILE_COMPARE_NOT_EQUAL
+};
+
+EXTERN_C BOOL GetFileCheckSum(HANDLE hFile, PULARGE_INTEGER dwChecksumHigh,
+			      PULARGE_INTEGER dwChecksumLow);
+EXTERN_C INT CompareFiles(LPCSTR szFile1, LPCSTR szFile2, DWORD dwSkipSize);
+EXTERN_C BOOL CompareMemory(LPVOID lpMem1, LPVOID lpMem2, DWORD dw64BitBlocks);
