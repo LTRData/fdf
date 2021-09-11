@@ -31,11 +31,11 @@ char **patterns;
 
 DWORD dwSkipSize = 0;
 
-QWORD qwDupSize = 0;
-QWORD qwSavedSize = 0;
-QWORD qwDupFiles = 0;
-QWORD qwFiles = 0;
-QWORD qwDeletedFiles = 0;
+DWORDLONG qwDupSize = 0;
+DWORDLONG qwSavedSize = 0;
+DWORDLONG qwDupFiles = 0;
+DWORDLONG qwFiles = 0;
+DWORDLONG qwDeletedFiles = 0;
 
 bool bDisplayLinks = true;
 bool bDisplayEqual = true;
@@ -220,7 +220,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
                 SetFileAttributes(szFilePath, dwFileAttrs);
             fprintf(stderr, "Cannot delete '%s'\n", szFilePath);
             qwDupSize += file->nFileSizeLow;
-            qwDupSize += (QWORD)file->nFileSizeHigh << 32;
+            qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
             return;
         }
 
@@ -230,7 +230,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
             puts("Deleted ok.");
 
         qwSavedSize += file->nFileSizeLow;
-        qwSavedSize += (QWORD)file->nFileSizeHigh << 32;
+        qwSavedSize += (DWORDLONG)file->nFileSizeHigh << 32;
         return;
     }
 
@@ -252,7 +252,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
                 fprintf(stderr, "Cannot link '%s' to '%s'.\n",
                     szFilePath, fr->szFilePath);
                 qwDupSize += file->nFileSizeLow;
-                qwDupSize += (QWORD)file->nFileSizeHigh << 32;
+                qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
                 return;
             }
 
@@ -262,7 +262,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
             puts("Hard linked ok.");
 
         qwSavedSize += file->nFileSizeLow;
-        qwSavedSize += (QWORD)file->nFileSizeHigh << 32;
+        qwSavedSize += (DWORDLONG)file->nFileSizeHigh << 32;
         return;
     }
 
@@ -270,7 +270,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
         puts("");
 
     qwDupSize += file->nFileSizeLow;
-    qwDupSize += (QWORD)file->nFileSizeHigh << 32;
+    qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
     return;
 }
 
