@@ -51,7 +51,8 @@ int main(int, char **argv)
 
             ULARGE_INTEGER Checksum0;
             ULARGE_INTEGER Checksum1;
-            if (!GetFileCheckSum(h, &Checksum0, &Checksum1))
+            BOOL Break = FALSE;
+            if (!GetFileCheckSum(h, &Checksum0, &Checksum1, &Break))
             {
                 win_perror(buf);
                 continue;

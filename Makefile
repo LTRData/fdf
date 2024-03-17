@@ -7,15 +7,31 @@ CPU=i386
 !ENDIF
 
 WARNING_LEVEL=/nologo /WX /W4 /wd4214 /wd4201 /wd4206 /D_CRT_SECURE_NO_WARNINGS
+
 !IF "$(CPU)" == "i386"
+
 OPTIMIZATION=/O2 /GF /G7 /GR- /MD
 LINK_SWITCHES=/nologo /defaultlib:bufferoverflowU.lib /debug /opt:nowin98,ref,icf=10 /fixed:no /release
+
 !ELSEIF "$(CPU)" == "ARM"
+
 OPTIMIZATION=/O2 /GR- /wd4996 /wd4005 /D_ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE /MD
 LINK_SWITCHES=/nologo /debug /opt:ref,icf=10 /fixed:no /release
-!ELSE
+
+!ELSEIF "$(CPU)" == "ARM64"
+
+OPTIMIZATION=/O2 /GR- /wd4996 /wd4005 /D_ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE /D_CRT_NON_CONFORMING_WCSTOK /MD
+LINK_SWITCHES=/nologo /debug /opt:ref,icf=10 /fixed:no /release
+
+!ELSEIF "$(CPU)" == "AMD64"
+
 OPTIMIZATION=/O2 /GFS- /GR- /MD
 LINK_SWITCHES=/nologo /defaultlib:bufferoverflowU.lib /debug /opt:ref,icf=10 /fixed:no /release
+
+!ELSE
+
+!ERROR Unsupported machine architecture: $(CPU)
+
 !ENDIF
 
 all: $(CPU)\fdf.exe $(CPU)\xorsum.exe

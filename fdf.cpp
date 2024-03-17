@@ -1,3 +1,10 @@
+#ifndef UNICODE
+#define UNICODE
+#endif
+#ifndef _UNICODE
+#define _UNICODE
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #include <winstrct.h>
 #include <wfind.h>
@@ -9,6 +16,7 @@
 #else
 #include <stdlib.h>
 #endif
+
 #include <conio.h>
 #include <process.h>
 #include <string.h>
@@ -24,10 +32,10 @@
 #endif
 #define FILE_OFFLINE_ATTRIBUTES (FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_RECALL_ON_OPEN | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS | FILE_ATTRIBUTE_VIRTUAL)
 
-char cCurrentPath[MAX_PATH_MAX_LENGTH] = "";
-char *szExcludeStrings = NULL;
+WCHAR cCurrentPath[MAX_PATH_MAX_LENGTH] = L"";
+LPWSTR szExcludeStrings = NULL;
 DWORD dwExcludeStrings = 0;
-char **patterns;
+LPWSTR *patterns;
 
 DWORD dwSkipSize = 0;
 
@@ -47,7 +55,7 @@ bool bLinkEqual = false;
 bool bRecurse = false;
 DWORD dwSkipFilesWithAttributes = FILE_ATTRIBUTE_DIRECTORY;
 bool bNoFollowJunctions = false;
-volatile bool bBreak = false;
+volatile BOOL bBreak = FALSE;
 bool bSplitLinks = false;
 
 FileRecordTableClass *FileRecordTable = NULL;
@@ -59,7 +67,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
     case CTRL_C_EVENT:
     case CTRL_BREAK_EVENT:
     case CTRL_CLOSE_EVENT:
-        bBreak = true;
+        bBreak = TRUE;
         return true;
     default:
         return false;
@@ -69,17 +77,17 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
 bool ExcludedString()
 {
     DWORD dwExcludeString = dwExcludeStrings;
-    char *szExcludeString = szExcludeStrings;
-    char *szPathEnd = cCurrentPath + strlen(cCurrentPath);
+    LPWSTR szExcludeString = szExcludeStrings;
+    LPWSTR szPathEnd = cCurrentPath + wcslen(cCurrentPath);
 
     do
     {
-        SIZE_T dwExclStrLen = strlen(szExcludeString);
+        SIZE_T dwExclStrLen = wcslen(szExcludeString);
 
-        for (char *szPathPtr = cCurrentPath;
+        for (LPWSTR szPathPtr = cCurrentPath;
         (DWORD)(szPathEnd - szPathPtr) >= dwExclStrLen;
             szPathPtr++)
-            if (_strnicmp(szPathPtr, szExcludeString, dwExclStrLen) == 0)
+            if (_wcsnicmp(szPathPtr, szExcludeString, dwExclStrLen) == 0)
                 return true;
 
         szExcludeString += dwExclStrLen + 1;
@@ -89,11 +97,11 @@ bool ExcludedString()
 }
 
 void
-chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
+chkfile(LPCWSTR szFilePath, const WIN32_FIND_DATA *file)
 {
     if (bVerbose)
     {
-        printf("\r%.79s", szFilePath);
+        wprintf(L"\r%.79s", szFilePath);
         clreol();
         fputc('\r', stdout);
     }
@@ -111,7 +119,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
             {
                 win_perror(szFilePath);
                 SetFileAttributes(szFilePath, dwFileAttrs);
-                fprintf(stderr, "Cannot unlink '%s'\n", szFilePath);
+                fwprintf(stderr, L"Cannot unlink '%s'\n", szFilePath);
                 clreol();
                 puts("");
                 return;
@@ -121,18 +129,18 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
             if (!CopyFile(fr->szFilePath, szFilePath, TRUE))
             {
                 win_perror(szFilePath);
-                fprintf(stderr, "Cannot copy '%s' to '%s'\n", fr->szFilePath,
+                fwprintf(stderr, L"Cannot copy '%s' to '%s'\n", fr->szFilePath,
                     szFilePath);
                 clreol();
                 puts("");
                 return;
             }
 
-            printf("'%s' copied to '%s'\n", fr->szFilePath, szFilePath);
+            wprintf(L"'%s' copied to '%s'\n", fr->szFilePath, szFilePath);
         }
-        else if (bDeleteEqual & bLinkEqual)
+        else if (bDeleteEqual && bLinkEqual)
         {
-            printf("'%s' <=> '%s': ", szFilePath, fr->szFilePath);
+            wprintf(L"'%s' <=> '%s': ", szFilePath, fr->szFilePath);
 
             DWORD dwFileAttrs = 0;
             if (bForceDelete)
@@ -151,7 +159,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
             else
             {
                 win_perror(szFilePath);
-                fprintf(stderr, "Cannot delete '%s'\n", szFilePath);
+                fwprintf(stderr, L"Cannot delete '%s'\n", szFilePath);
             }
 
             clreol();
@@ -162,7 +170,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
         }
         else if (bDisplayLinks)
         {
-            printf("'%s' <=> '%s'", szFilePath, fr->szFilePath);
+            wprintf(L"'%s' <=> '%s'", szFilePath, fr->szFilePath);
             clreol();
             puts("");
         }
@@ -170,19 +178,19 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
         return;
     }
 
-    LARGE_INTEGER FileSize;
+    LARGE_INTEGER FileSize = { 0 };
     FileSize.HighPart = file->nFileSizeHigh;
     FileSize.LowPart = file->nFileSizeLow;
 
     if (dwSkipSize > 0)
     {
         if (FileSize.QuadPart > dwSkipSize)
-            fr = FileRecordTable->FindEqualOrAdd(szFilePath, dwSkipSize);
+            fr = FileRecordTable->FindEqualOrAdd(szFilePath, dwSkipSize, &bBreak);
         else
             fr = NULL;
     }
     else
-        fr = FileRecordTable->FindEqualOrAdd(szFilePath, 0);
+        fr = FileRecordTable->FindEqualOrAdd(szFilePath, 0, &bBreak);
 
     if (fr == NULL)
     {
@@ -190,7 +198,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
         return;
     }
 
-    if (strcmp(szFilePath, fr->szFilePath) == 0)
+    if (wcscmp(szFilePath, fr->szFilePath) == 0)
         return;
 
     qwFiles++;
@@ -198,9 +206,10 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
 
     if (bDisplayEqual)
     {
-        printf("'%s' contains same as '%s' (%.4g %s). ",
+        wprintf(L"'%s' contains same as '%s' (%.4g %s). ",
             szFilePath, fr->szFilePath,
             TO_h(FileSize.QuadPart), TO_p(FileSize.QuadPart));
+
         clreol();
     }
 
@@ -218,7 +227,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
             win_perror(szFilePath);
             if (bForceDelete)
                 SetFileAttributes(szFilePath, dwFileAttrs);
-            fprintf(stderr, "Cannot delete '%s'\n", szFilePath);
+            fwprintf(stderr, L"Cannot delete '%s'\n", szFilePath);
             qwDupSize += file->nFileSizeLow;
             qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
             return;
@@ -249,7 +258,7 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
                 win_perror(szFilePath);
                 if (bForceDelete)
                     SetFileAttributes(szFilePath, dwFileAttrs);
-                fprintf(stderr, "Cannot link '%s' to '%s'.\n",
+                fwprintf(stderr, L"Cannot link '%s' to '%s'.\n",
                     szFilePath, fr->szFilePath);
                 qwDupSize += file->nFileSizeLow;
                 qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
@@ -275,15 +284,19 @@ chkfile(LPCSTR szFilePath, const WIN32_FIND_DATA *file)
 }
 
 bool
-dosubdir(LPSTR pCurrentPathPtr)
+dosubdir(LPWSTR pCurrentPathPtr)
 {
     if (bRecurse)
     {
         if (bVerbose)
         {
-            printf("\r%.79s", cCurrentPath);
+            wprintf(L"\r%.79s", cCurrentPath);
             clreol();
+#ifdef _DEBUG
+            fputc('\n', stdout);
+#else
             fputc('\r', stdout);
+#endif
         }
 
         pCurrentPathPtr[0] = '*';
@@ -293,6 +306,7 @@ dosubdir(LPSTR pCurrentPathPtr)
             bNoFollowJunctions ?
             FILE_ATTRIBUTE_REPARSE_POINT : 0,
             FILE_ATTRIBUTE_DIRECTORY);
+
         if (dirfound)
             do
             {
@@ -302,41 +316,43 @@ dosubdir(LPSTR pCurrentPathPtr)
                 if (bBreak)
                     return false;
 
-                if (sizeof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) <
-                    strlen(dirfound.cFileName) + 2)
+                if (_countof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) <
+                    wcslen(dirfound.cFileName) + 2)
                 {
-                    fprintf(stderr, "Skipping too long name: '%s'\n",
+                    fwprintf(stderr, L"Skipping too long name: '%s'\n",
                         dirfound.cFileName);
+
                     continue;
                 }
 
-                strcpy(pCurrentPathPtr, dirfound.cFileName);
+                wcscpy(pCurrentPathPtr, dirfound.cFileName);
 
-                if ((strcmp(dirfound.cFileName, ".") == 0) ||
-                    (strcmp(dirfound.cFileName, "..") == 0))
+                if ((wcscmp(dirfound.cFileName, L".") == 0) ||
+                    (wcscmp(dirfound.cFileName, L"..") == 0))
                     continue;
 
-                if (sizeof(cCurrentPath) - strlen(pCurrentPathPtr) -
+                if (_countof(cCurrentPath) - wcslen(pCurrentPathPtr) -
                     (pCurrentPathPtr - cCurrentPath) < 4)
                 {
-                    fprintf(stderr, "Skipping too long path: '%s'\n",
+                    fwprintf(stderr, L"Skipping too long path: '%s'\n",
                         cCurrentPath);
+
                     continue;
                 }
 
-                strcat(pCurrentPathPtr, "\\");
+                wcscat(pCurrentPathPtr, L"\\");
 
                 if (dwExcludeStrings && ExcludedString())
                     continue;
 
-                if (!dosubdir(pCurrentPathPtr + strlen(pCurrentPathPtr)))
+                if (!dosubdir(pCurrentPathPtr + wcslen(pCurrentPathPtr)))
                     return false;
 
                 continue;
             } while (dirfound.Next());
     }
 
-    char **argv = patterns;
+    LPWSTR *argv = patterns;
     while ((++argv)[0])
     {
 #ifndef NO_LOOP_SLEEPS
@@ -346,14 +362,14 @@ dosubdir(LPSTR pCurrentPathPtr)
         if (bBreak)
             return false;
 
-        if (sizeof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) -
-            strlen(argv[0]) < 1)
+        if (_countof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) -
+            wcslen(argv[0]) < 1)
         {
-            fprintf(stderr, "Skipping too long path: '%s'\n", cCurrentPath);
+            fwprintf(stderr, L"Skipping too long path: '%s'\n", cCurrentPath);
             continue;
         }
 
-        strcpy(pCurrentPathPtr, argv[0]);
+        wcscpy(pCurrentPathPtr, argv[0]);
 
         WFilteredFileFinder found(cCurrentPath, dwSkipFilesWithAttributes);
         if (!found)
@@ -368,21 +384,23 @@ dosubdir(LPSTR pCurrentPathPtr)
             if (bBreak)
                 return false;
 
-            if (sizeof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) <
-                strlen(found.cFileName) + 2)
+            if (_countof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) <
+                wcslen(found.cFileName) + 2)
             {
-                fprintf(stderr, "Skipping too long name: '%s'\n",
+                fwprintf(stderr, L"Skipping too long name: '%s'\n",
                     found.cFileName);
+
                 continue;
             }
 
-            strcpy(pCurrentPathPtr, found.cFileName);
+            wcscpy(pCurrentPathPtr, found.cFileName);
 
             if (dwExcludeStrings && ExcludedString())
                 continue;
 
             if (found.nFileSizeHigh | found.nFileSizeLow)
                 chkfile(cCurrentPath, &found);
+
         } while (found.Next());
     }
 
@@ -432,12 +450,12 @@ usage()
 }
 
 int
-main(int argc, char **argv)
+wmain(int argc, LPWSTR *argv)
 {
     // Nice argument parse loop :)
-    while (argv[1] ? argv[1][0] ? (argv[1][0] | 0x02) == '/' : false : false)
+    while (argv[1] != NULL && argv[1][0] != 0 && (argv[1][0] | 0x02) == '/')
     {
-        while ((++argv[1])[0])
+        while ((++argv[1])[0] != 0)
             switch (argv[1][0] | 0x20)
             {
             case 'h':
@@ -458,19 +476,21 @@ main(int argc, char **argv)
             case 'n':
                 if (argv[1][1] == ':')
                 {
-                    char *szSizeSuffix = NULL;
-                    dwSkipSize = strtoul(argv[1] + 2, &szSizeSuffix, 0);
+                    LPWSTR szSizeSuffix = NULL;
+                    dwSkipSize = wcstoul(argv[1] + 2, &szSizeSuffix, 0);
                     if (szSizeSuffix == argv[1] + 2)
                     {
-                        fprintf(stderr,
-                            "Invalid size: %s\r\n", szSizeSuffix);
+                        fwprintf(stderr,
+                            L"Invalid size: %s\r\n", szSizeSuffix);
+
                         return -1;
                     }
 
                     if (szSizeSuffix[0] ? szSizeSuffix[1] != 0 : false)
                     {
-                        fprintf(stderr,
-                            "Invalid size suffix: %s\r\n", szSizeSuffix);
+                        fwprintf(stderr,
+                            L"Invalid size suffix: %s\r\n", szSizeSuffix);
+
                         return -1;
                     }
 
@@ -493,7 +513,7 @@ main(int argc, char **argv)
                         return -1;
                     }
 
-                    argv[1] += strlen(argv[1]) - 1;
+                    argv[1] += wcslen(argv[1]) - 1;
                 }
                 else
                 {
@@ -524,13 +544,13 @@ main(int argc, char **argv)
                     argv[1][2] == 0)
                     usage();
 
-                szExcludeStrings = strtok(argv[1] + 2, ",");
+                szExcludeStrings = wcstok(argv[1] + 2, L",");
                 dwExcludeStrings = 1;
                 
                 while (strtok(NULL, ","))
                     dwExcludeStrings++;
                 
-                argv[1] += strlen(argv[1]) - 1;
+                argv[1] += wcslen(argv[1]) - 1;
                 break;
             default:
                 usage();
@@ -540,23 +560,18 @@ main(int argc, char **argv)
         ++argv;
     }
 
-    if (bForceDelete & !(bDeleteEqual | bLinkEqual))
+    if (bForceDelete && !(bDeleteEqual || bLinkEqual))
         usage();
 
-    char *fakeargv[3];
+    LPWSTR fakeargv[3] = { 0 };
     if (argv[1] == NULL)
     {
-        fakeargv[1] = "*";
+        fakeargv[1] = L"*";
         fakeargv[2] = NULL;
         patterns = fakeargv;
     }
     else
         patterns = argv;
-
-    while ((++argv)[0] != NULL)
-        CharToOem(argv[0], argv[0]);
-
-    SetFileApisToOEM();
 
     FileRecordTable = new FileRecordTableClass;
     if (FileRecordTable == NULL)
@@ -589,19 +604,19 @@ main(int argc, char **argv)
         printf("%.f file%s %s saved %.4g %s.\n",
             (double)qwDeletedFiles, qwDeletedFiles == 1 ? "" : "s",
             bDeleteEqual ? "removed" : "linked with duplicate", TO_h(qwSavedSize),
-            TO_p(qwSavedSize));
+            TO_pA(qwSavedSize));
 
         if (qwDupSize)
             printf("%.f duplicate file%s left occupying %.4g %s.\n",
                 (double)(qwDupFiles - qwDeletedFiles),
                 (qwDupFiles - qwDeletedFiles) == 1 ? "" : "s", TO_h(qwDupSize),
-                TO_p(qwDupSize));
+                TO_pA(qwDupSize));
     }
     else
     {
         if (qwDupSize)
             printf("%.f duplicate file%s occupying %.4g %s.\n", (double)qwDupFiles,
-                qwDupFiles == 1 ? "" : "s", TO_h(qwDupSize), TO_p(qwDupSize));
+                qwDupFiles == 1 ? "" : "s", TO_h(qwDupSize), TO_pA(qwDupSize));
         else
             puts("No duplicate files found.");
     }

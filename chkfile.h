@@ -17,6 +17,39 @@ enum FILE_COMPARE_STATUS
 };
 
 EXTERN_C BOOL GetFileCheckSum(HANDLE hFile, PULARGE_INTEGER dwChecksumHigh,
-			      PULARGE_INTEGER dwChecksumLow);
-EXTERN_C INT CompareFiles(LPCSTR szFile1, LPCSTR szFile2, DWORD dwSkipSize);
-EXTERN_C BOOL CompareMemory(LPVOID lpMem1, LPVOID lpMem2, DWORD dw64BitBlocks);
+			      PULARGE_INTEGER dwChecksumLow, volatile BOOL *bBreak);
+
+EXTERN_C INT CompareFiles(LPCWSTR szFile1, LPCWSTR szFile2, DWORD dwSkipSize, volatile BOOL *bBreak);
+
+#ifdef _M_IX86
+
+__forceinline
+BOOL
+SetFilePointerExInternal(
+    HANDLE hFile,
+    LARGE_INTEGER liDistanceToMove,
+    PLARGE_INTEGER lpNewFilePointer,
+    DWORD dwMoveMethod
+)
+{
+    LONG high = liDistanceToMove.HighPart;
+    DWORD result = SetFilePointer(hFile, liDistanceToMove.LowPart, &high, dwMoveMethod);
+
+    if (result == INVALID_SET_FILE_POINTER
+        && GetLastError() != NO_ERROR)
+    {
+        return FALSE;
+    }
+
+    if (lpNewFilePointer != NULL)
+    {
+        lpNewFilePointer->LowPart = result;
+        lpNewFilePointer->HighPart = high;
+    }
+
+    return TRUE;
+}
+
+#define SetFilePointerEx SetFilePointerExInternal
+
+#endif
