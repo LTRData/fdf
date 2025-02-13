@@ -18,8 +18,8 @@ CompareFiles(LPCWSTR szFile1, LPCWSTR szFile2, DWORD dwSkipSize, volatile BOOL *
 {
 	HANDLE hFile1;
 	HANDLE hFile2;
-	static char File1Buffer[16384];
-	static char File2Buffer[16384];
+	static char File1Buffer[1 << 20];
+	static char File2Buffer[1 << 20];
 	DWORD dwFile1ReadSize = 0;
 	DWORD dwFile2ReadSize = 0;
 
@@ -110,30 +110,35 @@ CompareFiles(LPCWSTR szFile1, LPCWSTR szFile2, DWORD dwSkipSize, volatile BOOL *
 	}
 }
 
-BOOL GetFileCheckSum(HANDLE hFile, PULARGE_INTEGER lpChecksum0,
-	PULARGE_INTEGER lpChecksum1, volatile BOOL *bBreak)
+BOOL GetFileCheckSum(HANDLE hFile, DWORD dwStartPos, PULARGE_INTEGER lpChecksum,
+	volatile BOOL *bBreak)
 {
-	static ULARGE_INTEGER buffer[131072];  // 1 MB buffer
-	static DWORD dwReadSize = sizeof buffer;
-	static DWORD dwAlignMask;
-	static DWORD dwBufferIdx;
-	int i = 0;
-	LARGE_INTEGER endPosition = { 0 };
+	static ULARGE_INTEGER buffer[16384];  // 128 KB buffer (8 * 16384 bytes)
 
-	lpChecksum0->QuadPart = 0;
-	lpChecksum1->QuadPart = 0;
+	lpChecksum->QuadPart = 0x811C9DC5811C9DC5;
 
-	for (; ; i++)
+	LARGE_INTEGER liStartPos = { dwStartPos };
+
+	if (liStartPos.QuadPart != 0 &&
+		!SetFilePointerEx(hFile, liStartPos, NULL, FILE_BEGIN))
 	{
-		if (*bBreak || !ReadFile(hFile, buffer, sizeof buffer, &dwReadSize, NULL))
-			return FALSE;
+		return FALSE;
+	}
 
-#ifndef NO_LOOP_SLEEPS
-		Sleep(0);
-#endif
+	for (int i = 0; ; i++)
+	{
+		DWORD dwReadSize;
+
+		if (*bBreak ||
+			!ReadFile(hFile, buffer, sizeof buffer, &dwReadSize, NULL))
+		{
+			return FALSE;
+		}
 
 		if (dwReadSize == 0)
-			return TRUE;
+		{
+			break;
+		}
 
 		// If read size not 8 byte aligned...
 		if (dwReadSize & 7)
@@ -142,32 +147,54 @@ BOOL GetFileCheckSum(HANDLE hFile, PULARGE_INTEGER lpChecksum0,
 			dwReadSize += 8 - (dwReadSize & 7);
 		}
 
-		dwReadSize >>= 3;
+		int iReadBlocks = dwReadSize / sizeof(*buffer);
 
-		for (dwBufferIdx = 0; dwBufferIdx < dwReadSize; dwBufferIdx++)
+		for (int iBufferIdx = 0; iBufferIdx < iReadBlocks && !*bBreak; iBufferIdx++)
 		{
-			lpChecksum0->QuadPart ^= buffer[dwBufferIdx].QuadPart;
-			lpChecksum1->QuadPart += buffer[dwBufferIdx].QuadPart +
-				lpChecksum0->QuadPart + dwBufferIdx + 1;
+			lpChecksum->QuadPart ^= buffer[iBufferIdx].QuadPart;
+			lpChecksum->QuadPart *= 0x1000193010001CF;
 		}
 
-		if (i > 0)
+		if (*bBreak || i >= 1)
 		{
-#ifdef _DEBUG
-			printf("CHECK: %I64X-%I64X\n",
-				buffer[dwBufferIdx].QuadPart,
-				lpChecksum0->QuadPart);
-#endif
-
-			return TRUE;
+			break;
 		}
+
+		if (dwReadSize < sizeof buffer)
+		{
+			break;
+		}
+
+		LARGE_INTEGER endPosition = { 0 };
 
 		endPosition.QuadPart = -(SSIZE_T)(sizeof buffer);
 
-		if (!SetFilePointerEx(hFile, endPosition, NULL, FILE_END))
+		if (!SetFilePointerEx(hFile, endPosition, &endPosition, FILE_END))
+		{
 			if (GetLastError() == ERROR_NEGATIVE_SEEK)
-				return TRUE;
+			{
+				break;
+			}
 			else
+			{
 				return FALSE;
+			}
+		}
+
+		if (endPosition.QuadPart < liStartPos.QuadPart + (DWORD)sizeof buffer)
+		{
+			endPosition.QuadPart = liStartPos.QuadPart + (DWORD)sizeof buffer;
+
+			if (!SetFilePointerEx(hFile, endPosition, NULL, FILE_BEGIN))
+			{
+				return FALSE;
+			}
+		}
 	}
+
+#ifdef _DEBUG
+	printf("CHECK: %I64X\n", lpChecksum->QuadPart);
+#endif
+
+	return TRUE;
 }

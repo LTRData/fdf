@@ -148,7 +148,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="chkfile.c" />
+    <ClCompile Include="chkfile.cpp" />
     <ClCompile Include="fdf.cpp" />
     <ClCompile Include="lnk.c" />
   </ItemGroup>

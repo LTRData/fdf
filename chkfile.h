@@ -16,8 +16,8 @@ enum FILE_COMPARE_STATUS
   FILE_COMPARE_NOT_EQUAL
 };
 
-EXTERN_C BOOL GetFileCheckSum(HANDLE hFile, PULARGE_INTEGER dwChecksumHigh,
-			      PULARGE_INTEGER dwChecksumLow, volatile BOOL *bBreak);
+EXTERN_C BOOL GetFileCheckSum(HANDLE hFile, DWORD dwSkupSize, PULARGE_INTEGER lpChecksum,
+    volatile BOOL *bBreak);
 
 EXTERN_C INT CompareFiles(LPCWSTR szFile1, LPCWSTR szFile2, DWORD dwSkipSize, volatile BOOL *bBreak);
 

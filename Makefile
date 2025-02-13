@@ -45,8 +45,8 @@ $(CPU)\xorsum.exe: Makefile $(CPU)\xorsum.obj $(CPU)\chkfile.obj
 $(CPU)\fdf.obj: Makefile fdf.cpp fdftable.hpp lnk.h ..\include\winstrct.h ..\include\wfind.h ..\include\wconsole.h
 	cl /c $(WARNING_LEVEL) $(OPTIMIZATION) /Fp$(CPU)\fdf /Fo$(CPU)\fdf.obj fdf.cpp
 
-$(CPU)\chkfile.obj: Makefile chkfile.c chkfile.h
-	cl /c $(WARNING_LEVEL) $(OPTIMIZATION) /Fp$(CPU)\chkfile /Fo$(CPU)\chkfile.obj chkfile.c
+$(CPU)\chkfile.obj: Makefile chkfile.cpp chkfile.h
+	cl /c $(WARNING_LEVEL) $(OPTIMIZATION) /Fp$(CPU)\chkfile /Fo$(CPU)\chkfile.obj chkfile.cpp
 
 $(CPU)\lnk.obj: Makefile lnk.c lnk.h ..\include\winstrct.h
 	cl /c $(WARNING_LEVEL) $(OPTIMIZATION) /Fplnk /Fo$(CPU)\lnk.obj lnk.c

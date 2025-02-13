@@ -49,18 +49,16 @@ int main(int, char **argv)
                 continue;
             }
 
-            ULARGE_INTEGER Checksum0;
-            ULARGE_INTEGER Checksum1;
+            ULARGE_INTEGER Checksum;
             BOOL Break = FALSE;
-            if (!GetFileCheckSum(h, &Checksum0, &Checksum1, &Break))
+            if (!GetFileCheckSum(h, 0, &Checksum, &Break))
             {
                 win_perror(buf);
                 continue;
             }
 
-            printf("%s - %.4X%.4X-%.4X%.4X\n", buf,
-                Checksum0.HighPart, Checksum0.LowPart,
-                Checksum1.HighPart, Checksum1.LowPart);
+            printf("%s - %.4X%.4X\n", buf,
+                Checksum.HighPart, Checksum.LowPart);
 
             CloseHandle(h);
         } while (ff.Next());
