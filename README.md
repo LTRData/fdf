@@ -38,6 +38,8 @@ These commands only report matches. The recursive examples use `-j` to avoid des
 | `-j` | With `-r`, skip directory reparse points during traversal. |
 | `-o` | Skip files marked offline, virtual, or requiring recall on open/data access. |
 | `-q` | Hide the current-file/current-directory progress display. |
+| `-qq` | Also suppress file-operation error messages; usage and argument errors remain visible. |
+| `-x:string[,string2...]` | Exclude paths and filenames containing any listed substring, matched case-insensitively. |
 | `-h` | Hide reports of existing hard links. |
 | `-s` | Hide duplicate-content reports. |
 | `-d` | Delete files found to duplicate an earlier candidate. |
@@ -49,7 +51,7 @@ These commands only report matches. The recursive examples use `-j` to avoid des
 
 For `-n`, uppercase `K`/`M` mean multiples of 1024 and lowercase `k`/`m` mean multiples of 1000. Follow the built-in help's limit of less than 2 GiB for LEN. **Using `-n` with deletion or linking can discard different header bytes**, because only the remaining contents are compared.
 
-The help also advertises `-x:string[,string2...]` exclusions and `-qq` error suppression. The current Windows exclusion parser mixes wide- and narrow-character tokenizers, and the extra quiet flag is not used by the error paths. Do not rely on these advertised behaviors without fixing and testing them.
+Pass exclusions in one `-x:` option, for example `fdf -r -j -q -x:cache,backup`. Entries are literal substrings rather than wildcard patterns. Empty comma-separated entries are ignored, but at least one nonempty entry is required. Quote the complete option if an entry contains spaces.
 
 ## How matching and actions work
 
