@@ -74,6 +74,34 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
     }
 }
 
+// Store nonempty, comma-separated exclusions as consecutive wide strings.
+bool ParseExclusions(LPWSTR value)
+{
+    szExcludeStrings = value;
+    dwExcludeStrings = 0;
+    LPWSTR output = value;
+
+    while (*value)
+    {
+        while (*value == L',')
+            ++value;
+
+        if (!*value)
+            break;
+
+        ++dwExcludeStrings;
+        while (*value && *value != L',')
+            *output++ = *value++;
+
+        if (*value)
+            ++value;
+
+        *output++ = 0;
+    }
+
+    return dwExcludeStrings != 0;
+}
+
 bool ExcludedString()
 {
     DWORD dwExcludeString = dwExcludeStrings;
@@ -117,9 +145,11 @@ chkfile(LPCWSTR szFilePath, const WIN32_FIND_DATA *file)
             SetFileAttributes(szFilePath, FILE_ATTRIBUTE_NORMAL);
             if (!DeleteFile(szFilePath))
             {
-                win_perror(szFilePath);
+                if (!bQuiet)
+                    win_perror(szFilePath);
                 SetFileAttributes(szFilePath, dwFileAttrs);
-                fwprintf(stderr, L"Cannot unlink '%s'\n", szFilePath);
+                if (!bQuiet)
+                    fwprintf(stderr, L"Cannot unlink '%s'\n", szFilePath);
                 clreol();
                 puts("");
                 return;
@@ -128,9 +158,11 @@ chkfile(LPCWSTR szFilePath, const WIN32_FIND_DATA *file)
             SetFileAttributes(fr->szFilePath, dwFileAttrs);
             if (!CopyFile(fr->szFilePath, szFilePath, TRUE))
             {
-                win_perror(szFilePath);
-                fwprintf(stderr, L"Cannot copy '%s' to '%s'\n", fr->szFilePath,
-                    szFilePath);
+                if (!bQuiet)
+                    win_perror(szFilePath);
+                if (!bQuiet)
+                    fwprintf(stderr, L"Cannot copy '%s' to '%s'\n", fr->szFilePath,
+                        szFilePath);
                 clreol();
                 puts("");
                 return;
@@ -158,8 +190,10 @@ chkfile(LPCWSTR szFilePath, const WIN32_FIND_DATA *file)
             }
             else
             {
-                win_perror(szFilePath);
-                fwprintf(stderr, L"Cannot delete '%s'\n", szFilePath);
+                if (!bQuiet)
+                    win_perror(szFilePath);
+                if (!bQuiet)
+                    fwprintf(stderr, L"Cannot delete '%s'\n", szFilePath);
             }
 
             clreol();
@@ -224,10 +258,12 @@ chkfile(LPCWSTR szFilePath, const WIN32_FIND_DATA *file)
 
         if (!DeleteFile(szFilePath))
         {
-            win_perror(szFilePath);
+            if (!bQuiet)
+                win_perror(szFilePath);
             if (bForceDelete)
                 SetFileAttributes(szFilePath, dwFileAttrs);
-            fwprintf(stderr, L"Cannot delete '%s'\n", szFilePath);
+            if (!bQuiet)
+                fwprintf(stderr, L"Cannot delete '%s'\n", szFilePath);
             qwDupSize += file->nFileSizeLow;
             qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
             return;
@@ -255,11 +291,13 @@ chkfile(LPCWSTR szFilePath, const WIN32_FIND_DATA *file)
         if (!CreateHardLinkToFile(fr->szFilePath, szFilePath, TRUE))
             if (!CreateHardLinkToFile(szFilePath, fr->szFilePath, TRUE))
             {
-                win_perror(szFilePath);
+                if (!bQuiet)
+                    win_perror(szFilePath);
                 if (bForceDelete)
                     SetFileAttributes(szFilePath, dwFileAttrs);
-                fwprintf(stderr, L"Cannot link '%s' to '%s'.\n",
-                    szFilePath, fr->szFilePath);
+                if (!bQuiet)
+                    fwprintf(stderr, L"Cannot link '%s' to '%s'.\n",
+                        szFilePath, fr->szFilePath);
                 qwDupSize += file->nFileSizeLow;
                 qwDupSize += (DWORDLONG)file->nFileSizeHigh << 32;
                 return;
@@ -319,8 +357,9 @@ dosubdir(LPWSTR pCurrentPathPtr)
                 if (_countof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) <
                     wcslen(dirfound.cFileName) + 2)
                 {
-                    fwprintf(stderr, L"Skipping too long name: '%s'\n",
-                        dirfound.cFileName);
+                    if (!bQuiet)
+                        fwprintf(stderr, L"Skipping too long name: '%s'\n",
+                            dirfound.cFileName);
 
                     continue;
                 }
@@ -334,8 +373,9 @@ dosubdir(LPWSTR pCurrentPathPtr)
                 if (_countof(cCurrentPath) - wcslen(pCurrentPathPtr) -
                     (pCurrentPathPtr - cCurrentPath) < 4)
                 {
-                    fwprintf(stderr, L"Skipping too long path: '%s'\n",
-                        cCurrentPath);
+                    if (!bQuiet)
+                        fwprintf(stderr, L"Skipping too long path: '%s'\n",
+                            cCurrentPath);
 
                     continue;
                 }
@@ -365,7 +405,8 @@ dosubdir(LPWSTR pCurrentPathPtr)
         if (_countof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) -
             wcslen(argv[0]) < 1)
         {
-            fwprintf(stderr, L"Skipping too long path: '%s'\n", cCurrentPath);
+            if (!bQuiet)
+                fwprintf(stderr, L"Skipping too long path: '%s'\n", cCurrentPath);
             continue;
         }
 
@@ -387,8 +428,9 @@ dosubdir(LPWSTR pCurrentPathPtr)
             if (_countof(cCurrentPath) - (pCurrentPathPtr - cCurrentPath) <
                 wcslen(found.cFileName) + 2)
             {
-                fwprintf(stderr, L"Skipping too long name: '%s'\n",
-                    found.cFileName);
+                if (!bQuiet)
+                    fwprintf(stderr, L"Skipping too long name: '%s'\n",
+                        found.cFileName);
 
                 continue;
             }
@@ -439,7 +481,7 @@ usage()
         "        megabytes, k or m to specify 1,000 bytes or 1,000,000 bytes. The\r\n"
         "        argument must be smaller than 2 GB.\r\n"
         "-q      Do not display which file or directory is currently scanned.\r\n"
-        "-qq     Same as -q but also skips error messages.\r\n"
+        "-qq     Same as -q but also skips file-operation error messages.\r\n"
         "-o      Skips offline files.\r\n"
         "-r      Recurse into subdirectories.\r\n"
         "-s      Do not display information about duplicate files found.\r\n"
@@ -539,19 +581,18 @@ wmain(int argc, LPWSTR *argv)
                 bSplitLinks = true;
                 break;
             case 'x':
-                if (dwExcludeStrings ||
-                    argv[1][1] != ':' ||
-                    argv[1][2] == 0)
+            {
+                if (dwExcludeStrings || argv[1][1] != ':')
                     usage();
 
-                szExcludeStrings = wcstok(argv[1] + 2, L",");
-                dwExcludeStrings = 1;
-                
-                while (strtok(NULL, ","))
-                    dwExcludeStrings++;
-                
-                argv[1] += wcslen(argv[1]) - 1;
+                // Parsing inserts NULs, so save the original end first.
+                LPWSTR lastChar = argv[1] + wcslen(argv[1]) - 1;
+                if (!ParseExclusions(argv[1] + 2))
+                    usage();
+
+                argv[1] = lastChar;
                 break;
+            }
             default:
                 usage();
             }
